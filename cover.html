@@ -72,6 +72,7 @@
 		</div>
 		<div id="content">
 		
+<<<<<<< HEAD
 		<pre class="file" id="file0" style="display: none">package stream
 
 import (
@@ -115,6 +116,51 @@ func (bs *ByteStream) ReadAt(b []byte, offset int64) (int, error) <span class="c
         }</span>
         <span class="cov8" title="1">return copy(b, bs.b[offset:end]), err</span>
 }
+=======
+		<pre class="file" id="file0" style="display: none">package stream
+
+import (
+        "errors"
+        "io"
+)
+
+//ByteStream - bytes stream
+type ByteStream struct {
+        b []byte
+}
+
+//NewByteStream - create file stream
+func NewByteStream(b []byte) (*ByteStream, error) <span class="cov8" title="1">{
+        if b == nil </span><span class="cov8" title="1">{
+                return nil, errors.New("bytes is nil")
+        }</span>
+        <span class="cov8" title="1">return &amp;ByteStream{b: b}, nil</span>
+}
+
+//Close - close file stream
+func (bs *ByteStream) Close() error <span class="cov8" title="1">{
+        bs.b = nil
+        return nil
+}</span>
+
+//Size - bytes size
+func (bs *ByteStream) Size() int64 <span class="cov8" title="1">{
+        return int64(len(bs.b))
+}</span>
+
+//ReadAt - read bytes from file
+func (bs *ByteStream) ReadAt(b []byte, offset int64) (int, error) <span class="cov8" title="1">{
+        var err error
+        end := offset + int64(len(b))
+
+        if offset &lt; 0 || offset &gt; bs.Size() </span><span class="cov8" title="1">{
+                return 0, io.EOF
+        }</span> else<span class="cov8" title="1"> if end &gt; bs.Size() </span><span class="cov8" title="1">{
+                end = bs.Size()
+        }</span>
+        <span class="cov8" title="1">return copy(b, bs.b[offset:end]), err</span>
+}
+>>>>>>> 697c24c94b71ba05e8594b9f777cff7f44aa8412
 </pre>
 		
 		<pre class="file" id="file1" style="display: none">package stream
@@ -165,6 +211,7 @@ func (fs *FileStream) Size() int64 <span class="cov8" title="1">{
 }</span>
 </pre>
 		
+<<<<<<< HEAD
 		<pre class="file" id="file2" style="display: none">package stream
 
 import (
@@ -338,6 +385,181 @@ func (s *Stream) ReadInt64() (int64, error) <span class="cov8" title="1">{
 func (s *Stream) SeekStart(offset int64) (int64, error) <span class="cov8" title="1">{
         return s.Seek(offset, 0)
 }</span>
+=======
+		<pre class="file" id="file2" style="display: none">package stream
+
+import (
+        "encoding/binary"
+        "errors"
+        "io"
+        "os"
+)
+
+//Stream - general intarface
+type Stream struct {
+        s      Streamer
+        buf    [8]byte
+        offset int64
+        order  binary.ByteOrder
+}
+
+//Streamer - general intarface
+type Streamer interface {
+        io.ReaderAt
+        io.Closer
+        Size() int64
+}
+
+//New - create stream
+func New(data interface{}) (*Stream, error) <span class="cov8" title="1">{
+        var s Streamer
+        var err error
+
+        switch td := data.(type) </span>{
+        case *os.File:<span class="cov8" title="1">
+                s, err = NewFileStream(td)</span>
+        case []byte:<span class="cov8" title="1">
+                s, err = NewByteStream(td)</span>
+        default:<span class="cov8" title="1">
+                err = errors.New("Unknown type")</span>
+        }
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return &amp;Stream{s: s, order: binary.LittleEndian}, nil</span>
+}
+
+//ChangeByteOrder - Set ByteOrder
+func (s *Stream) ChangeByteOrder(order binary.ByteOrder) <span class="cov8" title="1">{
+        s.order = order
+}</span>
+
+//Close - close file stream
+func (s *Stream) Close() error <span class="cov8" title="1">{
+        if s == nil </span><span class="cov8" title="1">{
+                return errors.New("Stream is nil")
+        }</span>
+        <span class="cov8" title="1">if s.s == nil </span><span class="cov8" title="1">{
+                return errors.New("Base stream is nil")
+        }</span>
+        <span class="cov8" title="1">err := s.s.Close()
+        s.offset = 0
+        s.s = nil
+        return err</span>
+}
+
+//Size - bytes size
+func (s *Stream) Size() int64 <span class="cov8" title="1">{
+        if s == nil || s.s == nil </span><span class="cov8" title="1">{
+                return 0
+        }</span>
+        <span class="cov8" title="1">return s.s.Size()</span>
+}
+
+//Seek - change position
+func (s *Stream) Seek(offset int64, whence int) (int64, error) <span class="cov8" title="1">{
+        position := s.offset
+        switch whence </span>{
+        case 0:<span class="cov8" title="1">
+                position = offset</span>
+        case 1:<span class="cov8" title="1">
+                position += offset</span>
+        case 2:<span class="cov8" title="1">
+                position = s.s.Size() - offset</span>
+        default:<span class="cov8" title="1">
+                return -1, errors.New("Unknown whence")</span>
+        }
+
+        <span class="cov8" title="1">if position &lt; 0 || position &gt; s.s.Size() </span><span class="cov8" title="1">{
+                return -1, io.EOF
+        }</span>
+        <span class="cov8" title="1">s.offset = position
+
+        return s.offset, nil</span>
+}
+
+//ReadAt - read bytes from file
+func (s *Stream) ReadAt(b []byte, offset int64) (int, error) <span class="cov8" title="1">{
+        if s.s == nil </span><span class="cov8" title="1">{
+                return -1, errors.New("Satream is nil")
+        }</span>
+
+        <span class="cov8" title="1">i, err := s.s.ReadAt(b, offset)
+        if err == nil &amp;&amp; i != len(b) </span><span class="cov8" title="1">{
+                err = io.EOF
+        }</span>
+        <span class="cov8" title="1">return i, err</span>
+}
+
+//Read - read bytes from file
+func (s *Stream) Read(b []byte) (int, error) <span class="cov8" title="1">{
+        i, err := s.ReadAt(b, s.offset)
+        if err != nil </span><span class="cov8" title="1">{
+                return i, err
+        }</span>
+        <span class="cov8" title="1">s.offset += int64(i)
+        return i, err</span>
+}
+
+//ReadByte - read byte from file
+func (s *Stream) ReadByte() (byte, error) <span class="cov8" title="1">{
+        _, err := s.Read(s.buf[:1])
+        if err != nil </span><span class="cov8" title="1">{
+                return s.buf[0], err
+        }</span>
+        <span class="cov8" title="1">return s.buf[0], nil</span>
+}
+
+//ReadBytes - read bytes from file
+func (s *Stream) ReadBytes(count int) ([]byte, error) <span class="cov8" title="1">{
+        result := make([]byte, count)
+        if _, err := s.Read(result); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+//ReadUInt16 - read uint16 from file
+func (s *Stream) ReadUInt16() (v uint16, err error) <span class="cov8" title="1">{
+        if _, err = s.Read(s.buf[:2]); err != nil </span><span class="cov8" title="1">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">return s.order.Uint16(s.buf[:2]), nil</span>
+}
+
+//ReadUInt32 - read uint32 from file
+func (s *Stream) ReadUInt32() (uint32, error) <span class="cov8" title="1">{
+        if _, err := s.Read(s.buf[:4]); err != nil </span><span class="cov8" title="1">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">return s.order.Uint32(s.buf[:4]), nil</span>
+}
+
+//ReadUInt64 - read uint64 from file
+func (s *Stream) ReadUInt64() (uint64, error) <span class="cov8" title="1">{
+        if _, err := s.Read(s.buf[:8]); err != nil </span><span class="cov8" title="1">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">return s.order.Uint64(s.buf[:8]), nil</span>
+}
+
+//ReadInt32 - read int32 from file
+func (s *Stream) ReadInt32() (int32, error) <span class="cov8" title="1">{
+        i, err := s.ReadUInt32()
+        return int32(i), err
+}</span>
+
+//ReadInt64 - read int64 from file
+func (s *Stream) ReadInt64() (int64, error) <span class="cov8" title="1">{
+        i, err := s.ReadUInt64()
+        return int64(i), err
+}</span>
+
+//SeekStart - change position relative to the start of the file,
+func (s *Stream) SeekStart(offset int64) (int64, error) <span class="cov8" title="1">{
+        return s.Seek(offset, 0)
+}</span>
+>>>>>>> 697c24c94b71ba05e8594b9f777cff7f44aa8412
 </pre>
 		
 		</div>
