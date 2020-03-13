@@ -169,5 +169,10 @@ func (s *Stream) ReadInt64() (int64, error) {
 
 //SeekStart - change position relative to the start of the file,
 func (s *Stream) SeekStart(offset int64) (int64, error) {
-	return s.Seek(offset, 0)
+	return s.Seek(offset, io.SeekStart)
+}
+
+//SeekEnd - change position relative to the end of the file,
+func (s *Stream) SeekEnd(offset int64) (int64, error) {
+	return s.Seek(offset, io.SeekEnd)
 }
